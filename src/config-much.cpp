@@ -44,7 +44,9 @@ void Parser::parse(google::protobuf::Message* msg, const YAML::Node& node,
         for (int i = 0; i < descriptor->field_count(); i++) {
             const FieldDescriptor* f = descriptor->field(i);
 
-            parse(m, node[field->name()], f);
+            if (node[field->name()]) {
+                parse(m, node[field->name()], f);
+            }
         }
         return;
     }
