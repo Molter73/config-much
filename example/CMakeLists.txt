@@ -1,0 +1,11 @@
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+set(executable_name test-config)
+add_executable(${executable_name} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc ${CMAKE_CURRENT_SOURCE_DIR}/config.proto)
+target_link_libraries(${executable_name} protobuf::libprotobuf config-much)
+target_compile_options(${executable_name} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+if (USE_ASAN)
+    target_compile_options(${executable_name} PRIVATE -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined)
+    target_link_options(${executable_name} PRIVATE -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined)
+endif()
+protobuf_generate(TARGET ${executable_name})

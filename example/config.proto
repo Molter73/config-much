@@ -1,0 +1,12 @@
+syntax = "proto3";
+package test_config;
+
+message FeatureOne {
+    bool enabled = 1;
+    optional uint64 interval = 2;
+}
+
+message Config {
+    bool enabled = 1;
+    optional FeatureOne f_one = 2;
+}

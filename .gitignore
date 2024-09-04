@@ -1,0 +1,7 @@
+# build directory
+build/
+
+# vcpkg
+vcpkg-configuration.json
+vcpkg-manifest-install.log
+vcpkg_installed/

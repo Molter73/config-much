@@ -1,0 +1,4 @@
+enabled: true
+f_one:
+  enabled: true
+  interval: 25
