@@ -6,8 +6,9 @@
 #include <string>
 
 namespace ConfigMuch {
-void Parser::add_file(const std::filesystem::path& p) {
+Builder& Builder::add_file(const std::filesystem::path& p) {
     files_.emplace_back(p);
+    return *this;
 }
 
 void Parser::parse(google::protobuf::Message* msg) {
