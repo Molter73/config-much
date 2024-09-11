@@ -1,5 +1,6 @@
 #include "config-much.h"
 
+#include <cassert>
 #include <cctype>
 #include <cstdlib>
 #include <sstream>
@@ -126,8 +127,7 @@ void Parser::parse(google::protobuf::Message* msg, const std::string& prefix,
                    const google::protobuf::FieldDescriptor* field) {
     using namespace google::protobuf;
 
-    std::string env_var = prefix + "_" + field->name();
-    std::transform(env_var.begin(), env_var.end(), env_var.begin(), [](char c) { return toupper(c); });
+    std::string env_var = cook_env_var(prefix, field->name());
 
     if (field->type() == FieldDescriptor::TYPE_MESSAGE) {
         const Reflection* reflection = msg->GetReflection();
@@ -196,4 +196,31 @@ void Parser::parse(google::protobuf::Message* msg, const std::string& prefix,
         std::cerr << "Unexpected type!" << std::endl;
     }
 }
+
+std::string Parser::cook_env_var(const std::string& prefix, const std::string& suffix) {
+    return prefix + '_' + to_upper(camel_to_snake_case(suffix));
+}
+
+std::string Parser::camel_to_snake_case(const std::string& s) {
+    std::string out;
+    bool first = true;
+
+    for (const auto& c : s) {
+        if (!first && std::isupper(c) != 0) {
+            out += '_';
+        }
+        out += (char)std::tolower(c);
+        first = false;
+    }
+
+    return out;
+}
+
+std::string Parser::to_upper(const std::string& s) {
+    std::string out;
+    out.resize(s.size());
+    std::transform(s.begin(), s.end(), out.begin(), [](unsigned char c) { return std::toupper(c); });
+    return out;
+}
+
 } // namespace ConfigMuch

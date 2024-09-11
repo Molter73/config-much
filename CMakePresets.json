@@ -8,6 +8,15 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
       }
+    },
+    {
+      "name": "devel",
+      "inherits": "default",
+      "cacheVariables": {
+        "BUILD_TESTS": "ON",
+        "BUILD_EXAMPLE": "ON",
+        "USE_ASAN": "ON"
+      }
     }
   ]
 }
