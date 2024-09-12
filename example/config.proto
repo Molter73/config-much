@@ -9,4 +9,5 @@ message FeatureOne {
 message Config {
     bool enabled = 1;
     optional FeatureOne f_one = 2;
+    repeated int32 some_array = 3;
 }

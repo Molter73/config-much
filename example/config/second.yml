@@ -1,1 +1,3 @@
 enabled: false
+some_array:
+- 6

@@ -2,3 +2,7 @@ enabled: true
 f_one:
   enabled: true
   interval: 25
+some_array:
+- 1
+- 2
+- 3

@@ -36,6 +36,19 @@ void Parser::parse(google::protobuf::Message* msg, const YAML::Node& node,
                    const google::protobuf::FieldDescriptor* field) {
     using namespace google::protobuf;
 
+    if (!node[field->name()]) {
+        std::cout << "Skip missing field: " << field->name() << std::endl;
+        return;
+    }
+
+    if (field->label() == FieldDescriptor::LABEL_REPEATED) {
+        if (!node[field->name()].IsSequence()) {
+            std::cerr << "Type mismatch for '" << field->name() << "', expected sequence, got "
+                      << node[field->name()].Type();
+        }
+        return parse_array(msg, node[field->name()], field);
+    }
+
     if (field->type() == FieldDescriptor::TYPE_MESSAGE) {
         std::cout << "Parsing field: " << field->name() << std::endl;
         const Reflection* reflection = msg->GetReflection();
@@ -50,11 +63,6 @@ void Parser::parse(google::protobuf::Message* msg, const YAML::Node& node,
                 parse(m, node[field->name()], f);
             }
         }
-        return;
-    }
-
-    if (!node[field->name()]) {
-        std::cout << "Skip missing field: " << field->name() << std::endl;
         return;
     }
 
@@ -194,6 +202,56 @@ void Parser::parse(google::protobuf::Message* msg, const std::string& prefix,
     case FieldDescriptor::TYPE_MESSAGE:
     case FieldDescriptor::TYPE_GROUP:
         std::cerr << "Unexpected type!" << std::endl;
+    }
+}
+
+template <typename T>
+void Parser::parse_array_field(google::protobuf::Message* msg, const YAML::Node& node,
+                               const google::protobuf::FieldDescriptor* field) {
+    auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<T>(msg, field);
+    f.Clear();
+    for (const auto& n : node) {
+        f.Add(n.as<T>());
+    }
+}
+
+void Parser::parse_array(google::protobuf::Message* msg, const YAML::Node& node,
+                         const google::protobuf::FieldDescriptor* field) {
+    using namespace google::protobuf;
+
+    // mapping for repeated fields:
+    // https://protobuf.dev/reference/cpp/api-docs/google.protobuf.message/#Reflection.GetRepeatedFieldRef.details
+    switch (field->cpp_type()) {
+    case FieldDescriptor::CPPTYPE_INT32:
+        parse_array_field<int32>(msg, node, field);
+        break;
+    case FieldDescriptor::CPPTYPE_UINT32:
+        parse_array_field<uint32_t>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+        parse_array_field<int64_t>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+        parse_array_field<uint64_t>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+        parse_array_field<double>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+        parse_array_field<float>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+        parse_array_field<bool>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+        std::cerr << "Unsupport repeated type ENUM" << std::endl;
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+        parse_array_field<std::string>(msg, node, field);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+        std::cerr << "Unsupport repeated type MESSAGE" << std::endl;
+        break;
     }
 }
 
