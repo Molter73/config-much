@@ -21,7 +21,11 @@ if (USE_ASAN)
 endif()
 add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 
-add_library(config-much STATIC ${PROJECT_SOURCE_DIR}/src/config-much.cpp)
+add_library(config-much STATIC
+    ${PROJECT_SOURCE_DIR}/src/internal/parser-yaml.cpp
+    ${PROJECT_SOURCE_DIR}/src/internal/parser-env.cpp
+)
+
 target_include_directories(config-much PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(config-much PRIVATE protobuf::libprotobuf yaml-cpp::yaml-cpp)
 

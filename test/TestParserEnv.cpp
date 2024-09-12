@@ -1,10 +1,10 @@
-#include "config-much.h"
+#include "internal/parser-env.h"
 
 #include <gtest/gtest.h>
 #include <vector>
 
-namespace ConfigMuch {
-TEST(ParserTests, CamelToSnakeCase) {
+namespace ConfigMuch::internal {
+TEST(ParserEnvTests, CamelToSnakeCase) {
     struct test_case {
         std::string input;
         std::string expected;
@@ -17,12 +17,12 @@ TEST(ParserTests, CamelToSnakeCase) {
     };
 
     for (const auto& test : tests) {
-        std::string processed = ConfigMuch::Parser::camel_to_snake_case(test.input);
+        std::string processed = ParserEnv::camel_to_snake_case(test.input);
         ASSERT_EQ(processed, test.expected);
     }
 }
 
-TEST(ParserTests, ToUpper) {
+TEST(ParserEnvTests, ToUpper) {
     struct test_case {
         std::string input;
         std::string expected;
@@ -35,12 +35,12 @@ TEST(ParserTests, ToUpper) {
     };
 
     for (const auto& test : tests) {
-        std::string processed = ConfigMuch::Parser::to_upper(test.input);
+        std::string processed = ParserEnv::to_upper(test.input);
         ASSERT_EQ(processed, test.expected);
     }
 }
 
-TEST(ParserTests, CookEnvVar) {
+TEST(ParserEnvTests, CookEnvVar) {
     struct test_case {
         std::string prefix;
         std::string suffix;
@@ -54,7 +54,7 @@ TEST(ParserTests, CookEnvVar) {
     };
 
     for (const auto& test: tests) {
-        std::string processed = ConfigMuch::Parser::cook_env_var(test.prefix, test.suffix);
+        std::string processed = ParserEnv::cook_env_var(test.prefix, test.suffix);
         ASSERT_EQ(processed, test.expected);
     }
 }
