@@ -8,7 +8,7 @@
 
 #include <optional>
 
-namespace ConfigMuch {
+namespace config_much {
 class Parser {
 public:
     Parser(std::vector<std::unique_ptr<ParserInterface>> parsers) : parsers_(std::move(parsers)) {}
@@ -46,4 +46,4 @@ private:
     std::optional<std::string> env_var_prefix_;
     std::vector<std::unique_ptr<ParserInterface>> parsers_;
 };
-} // namespace ConfigMuch
+} // namespace config_much

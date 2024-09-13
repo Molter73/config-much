@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-namespace ConfigMuch::internal {
+namespace config_much::internal {
 TEST(ParserEnvTests, CamelToSnakeCase) {
     struct test_case {
         std::string input;
@@ -58,4 +58,4 @@ TEST(ParserEnvTests, CookEnvVar) {
         ASSERT_EQ(processed, test.expected);
     }
 }
-} // namespace ConfigMuch
+} // namespace config_much

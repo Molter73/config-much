@@ -2,7 +2,7 @@
 
 #include <google/protobuf/descriptor.h>
 
-namespace ConfigMuch::internal {
+namespace config_much::internal {
 void ParserEnv::parse(google::protobuf::Message* msg) {
     using namespace google::protobuf;
 
@@ -111,4 +111,4 @@ std::string ParserEnv::to_upper(const std::string& s) {
     std::transform(s.begin(), s.end(), out.begin(), [](unsigned char c) { return std::toupper(c); });
     return out;
 }
-} // namespace ConfigMuch::internal
+} // namespace config_much::internal

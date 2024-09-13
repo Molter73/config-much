@@ -2,7 +2,7 @@
 
 #include <google/protobuf/message.h>
 
-namespace ConfigMuch {
+namespace config_much {
 class ParserInterface {
 public:
     virtual ~ParserInterface()                         = default;
@@ -14,4 +14,4 @@ public:
 
     virtual void parse(google::protobuf::Message* msg) = 0;
 };
-} // namespace ConfigMuch
+} // namespace config_much

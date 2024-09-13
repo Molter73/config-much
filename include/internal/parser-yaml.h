@@ -6,7 +6,7 @@
 
 #include <filesystem>
 
-namespace ConfigMuch::internal {
+namespace config_much::internal {
 class ParserYaml : public ParserInterface {
 public:
     ParserYaml(const std::filesystem::path& file) {
@@ -23,4 +23,4 @@ private:
 
     YAML::Node node_;
 };
-} // namespace ConfigMuch::internal
+} // namespace config_much::internal

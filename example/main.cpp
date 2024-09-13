@@ -23,7 +23,7 @@ int main(int argc, const char* argv[]) {
     std::filesystem::path base{argv[1]};
 
     test_config::Config protoConfig;
-    ConfigMuch::Builder{}
+    config_much::Builder{}
         .add_file(base / "config.yml")
         .add_file(base / "second.yml")
         .set_env_var_prefix("MY_APP")

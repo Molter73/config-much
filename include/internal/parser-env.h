@@ -4,7 +4,7 @@
 
 #include <gtest/gtest_prod.h>
 
-namespace ConfigMuch::internal {
+namespace config_much::internal {
 class ParserEnv : public ParserInterface {
 public:
     ParserEnv(const std::string& prefix) : prefix_(to_upper(prefix)) {}
@@ -26,4 +26,4 @@ private:
 
     std::string prefix_;
 };
-} // namespace ConfigMuch::internal
+} // namespace config_much::internal

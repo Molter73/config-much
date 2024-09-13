@@ -1,6 +1,6 @@
 #include "internal/parser-yaml.h"
 
-namespace ConfigMuch::internal {
+namespace config_much::internal {
 void ParserYaml::parse(google::protobuf::Message* msg) {
     using namespace google::protobuf;
     const Descriptor* descriptor = msg->GetDescriptor();
@@ -146,4 +146,4 @@ void ParserYaml::parse_array(google::protobuf::Message* msg, const YAML::Node& n
         break;
     }
 }
-} // namespace ConfigMuch::internal
+} // namespace config_much::internal
