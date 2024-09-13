@@ -3,11 +3,12 @@
 namespace config_much::internal {
 void ParserYaml::parse(google::protobuf::Message* msg) {
     using namespace google::protobuf;
+    YAML::Node node = YAML::LoadFile(file_);
     const Descriptor* descriptor = msg->GetDescriptor();
 
     for (int i = 0; i < descriptor->field_count(); i++) {
         const FieldDescriptor* field = descriptor->field(i);
-        parse(msg, node_, field);
+        parse(msg, node, field);
     }
 }
 
@@ -29,7 +30,6 @@ void ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node,
     using namespace google::protobuf;
 
     if (!node[field->name()]) {
-        std::cout << "Skip missing field: " << field->name() << std::endl;
         return;
     }
 
@@ -42,7 +42,6 @@ void ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node,
     }
 
     if (field->type() == FieldDescriptor::TYPE_MESSAGE) {
-        std::cout << "Parsing field: " << field->name() << std::endl;
         const Reflection* reflection = msg->GetReflection();
 
         Message* m = reflection->MutableMessage(msg, field);

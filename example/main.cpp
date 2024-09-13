@@ -23,12 +23,13 @@ int main(int argc, const char* argv[]) {
     std::filesystem::path base{argv[1]};
 
     test_config::Config protoConfig;
-    config_much::Builder{}
-        .add_file(base / "config.yml")
-        .add_file(base / "second.yml")
-        .set_env_var_prefix("MY_APP")
-        .build()
-        .parse(&protoConfig);
+    { // No need to hold to the parser once the configuration is loaded!
+        config_much::Parser{}
+            .add_file(base / "config.yml")
+            .add_file(base / "second.yml")
+            .set_env_var_prefix("MY_APP")
+            .parse(&protoConfig);
+    }
 
     std::cout << protoConfig.DebugString() << std::endl;
 

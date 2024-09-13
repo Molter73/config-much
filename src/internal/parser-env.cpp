@@ -18,7 +18,6 @@ void ParserEnv::parse(google::protobuf::Message* msg, const std::string& prefix,
     using namespace google::protobuf;
 
     std::string env_var = cook_env_var(prefix, field->name());
-    std::cout << env_var << std::endl;
 
     if (field->type() == FieldDescriptor::TYPE_MESSAGE) {
         const Reflection* reflection = msg->GetReflection();

@@ -11,39 +11,30 @@
 namespace config_much {
 class Parser {
 public:
-    Parser(std::vector<std::unique_ptr<ParserInterface>> parsers) : parsers_(std::move(parsers)) {}
+    Parser() = default;
 
     void parse(google::protobuf::Message* msg) {
         for (auto& parser : parsers_) {
             parser->parse(msg);
         }
-    }
 
-private:
-    std::vector<std::unique_ptr<ParserInterface>> parsers_;
-};
-
-class Builder {
-public:
-    Builder& add_file(const std::filesystem::path& p) {
-        parsers_.emplace_back(std::make_unique<internal::ParserYaml>(p));
-        return *this;
-    }
-
-    Builder& set_env_var_prefix(const std::string& prefix) {
-        env_var_prefix_ = prefix;
-        return *this;
-    }
-
-    Parser build() {
-        if (env_var_prefix_.has_value()) {
-            parsers_.emplace_back(std::make_unique<internal::ParserEnv>(*env_var_prefix_));
+        if (parser_env_) {
+            parser_env_->parse(msg);
         }
-        return {std::move(parsers_)};
+    }
+
+    Parser& add_file(const std::filesystem::path& path) {
+        parsers_.emplace_back(std::make_unique<internal::ParserYaml>(path));
+        return *this;
+    }
+
+    Parser& set_env_var_prefix(const std::string& prefix) {
+        parser_env_ = internal::ParserEnv(prefix);
+        return *this;
     }
 
 private:
-    std::optional<std::string> env_var_prefix_;
     std::vector<std::unique_ptr<ParserInterface>> parsers_;
+    std::optional<internal::ParserEnv> parser_env_;
 };
 } // namespace config_much

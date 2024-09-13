@@ -9,9 +9,7 @@
 namespace config_much::internal {
 class ParserYaml : public ParserInterface {
 public:
-    ParserYaml(const std::filesystem::path& file) {
-        node_ = YAML::LoadFile(file);
-    }
+    ParserYaml(std::filesystem::path file) : file_(std::move(file)) {}
 
     void parse(google::protobuf::Message* msg) override;
 
@@ -21,6 +19,6 @@ private:
     static void parse_array(google::protobuf::Message* msg, const YAML::Node& node,
                             const google::protobuf::FieldDescriptor* field);
 
-    YAML::Node node_;
+    std::filesystem::path file_;
 };
 } // namespace config_much::internal
