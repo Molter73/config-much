@@ -75,6 +75,9 @@ TEST(ParserEnvTests, Parsing) {
     expected.set_field_float(0.12345);
     expected.set_field_string("Yes, this is some random string for testing");
     expected.mutable_field_message()->set_enabled(true);
+    expected.mutable_field_repeated()->Add(1);
+    expected.mutable_field_repeated()->Add(2);
+    expected.mutable_field_repeated()->Add(3);
 
     setenv("MY_APP_ENABLED", "true", 0);
     setenv("MY_APP_FIELD_I32", "-32", 0);
@@ -85,6 +88,9 @@ TEST(ParserEnvTests, Parsing) {
     setenv("MY_APP_FIELD_FLOAT", "0.12345", 0);
     setenv("MY_APP_FIELD_STRING", "Yes, this is some random string for testing", 0);
     setenv("MY_APP_FIELD_MESSAGE_ENABLED", "true", 0);
+    setenv("MY_APP_FIELD_REPEATED_0", "1", 0);
+    setenv("MY_APP_FIELD_REPEATED_1", "2", 0);
+    setenv("MY_APP_FIELD_REPEATED_2", "3", 0);
 
     test_config::Config parsed;
     ParserEnv{"MY_APP"}.parse(&parsed);

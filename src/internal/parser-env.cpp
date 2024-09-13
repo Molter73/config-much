@@ -1,5 +1,6 @@
 #include "internal/parser-env.h"
 
+#include <cstdlib>
 #include <google/protobuf/descriptor.h>
 
 namespace config_much::internal {
@@ -18,6 +19,10 @@ void ParserEnv::parse(google::protobuf::Message* msg, const std::string& prefix,
     using namespace google::protobuf;
 
     std::string env_var = cook_env_var(prefix, field->name());
+
+    if (field->label() == FieldDescriptor::LABEL_REPEATED) {
+        return parse_array(msg, env_var, field);
+    }
 
     if (field->type() == FieldDescriptor::TYPE_MESSAGE) {
         const Reflection* reflection = msg->GetReflection();
@@ -82,6 +87,74 @@ void ParserEnv::parse(google::protobuf::Message* msg, const std::string& prefix,
     case FieldDescriptor::TYPE_MESSAGE:
     case FieldDescriptor::TYPE_GROUP:
         std::cerr << "Unexpected type!" << std::endl;
+    }
+}
+
+namespace {
+template <typename T>
+void parse_array_inner(google::protobuf::MutableRepeatedFieldRef<T> field, const std::string& prefix,
+                       std::function<T(const char*)> p) {
+    std::string name;
+    const char* value = nullptr;
+    field.Clear();
+    for (int i = 0;; i++) {
+        name  = prefix + '_' + std::to_string(i);
+        value = std::getenv(name.c_str());
+        if (value == nullptr) {
+            break;
+        }
+
+        field.Add(p(value));
+    }
+}
+} // namespace
+
+void ParserEnv::parse_array(google::protobuf::Message* msg, const std::string& prefix,
+                            const google::protobuf::FieldDescriptor* field) {
+    switch (field->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int32_t>(msg, field);
+        parse_array_inner<int32_t>(f, prefix, [](const char* s) { return std::stoi(s); });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int64_t>(msg, field);
+        parse_array_inner<int64_t>(f, prefix, [](const char* s) { return std::stoi(s); });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<uint32_t>(msg, field);
+        parse_array_inner<uint32_t>(f, prefix, [](const char* s) { return std::stoul(s); });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<uint64_t>(msg, field);
+        parse_array_inner<uint64_t>(f, prefix, [](const char* s) { return std::stoull(s); });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<double>(msg, field);
+        parse_array_inner<double>(f, prefix, [](const char* s) { return std::stod(s); });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<float>(msg, field);
+        parse_array_inner<float>(f, prefix, [](const char* s) { return std::stof(s); });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<bool>(msg, field);
+        parse_array_inner<bool>(f, prefix, [](const char* s) {
+            bool parsed = false;
+            std::istringstream is(s);
+            is >> std::boolalpha >> parsed;
+            return parsed;
+        });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+        std::cerr << "Unsupported repeated type ENUM" << std::endl;
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<std::string>(msg, field);
+        parse_array_inner<std::string>(f, prefix, [](const char* s) { return s; });
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+        std::cerr << "Unsupported repeated type MESSAGE" << std::endl;
+        break;
     }
 }
 
