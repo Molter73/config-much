@@ -12,6 +12,7 @@ public:
     ParserYaml(std::filesystem::path file) : file_(std::move(file)) {}
 
     void parse(google::protobuf::Message* msg) override;
+    static void parse(google::protobuf::Message* msg, const YAML::Node& node);
 
 private:
     static void parse(google::protobuf::Message* msg, const YAML::Node& node,

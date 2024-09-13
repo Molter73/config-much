@@ -3,9 +3,15 @@
 namespace config_much::internal {
 void ParserYaml::parse(google::protobuf::Message* msg) {
     using namespace google::protobuf;
-    YAML::Node node = YAML::LoadFile(file_);
-    const Descriptor* descriptor = msg->GetDescriptor();
 
+    YAML::Node node = YAML::LoadFile(file_);
+    parse(msg, node);
+}
+
+void ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node) {
+    using namespace google::protobuf;
+
+    const Descriptor* descriptor = msg->GetDescriptor();
     for (int i = 0; i < descriptor->field_count(); i++) {
         const FieldDescriptor* field = descriptor->field(i);
         parse(msg, node, field);
