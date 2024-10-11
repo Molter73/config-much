@@ -10,7 +10,7 @@ public:
     ParserInterface(ParserInterface&&)                 = default;
     ParserInterface& operator=(const ParserInterface&) = default;
     ParserInterface& operator=(ParserInterface&&)      = default;
-    ParserInterface() = default;
+    ParserInterface()                                  = default;
 
     virtual void parse(google::protobuf::Message* msg) = 0;
 };

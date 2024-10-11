@@ -15,6 +15,9 @@ jobs:
         preset:
         - default
         - devel
+    env:
+      VCPKG_ROOT: /usr/local/share/vcpkg
+
     steps:
       - uses: actions/checkout@v4
       - name: Build
