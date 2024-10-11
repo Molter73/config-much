@@ -44,7 +44,7 @@ jobs:
 
       - name: Lint
         run: |
-          find ./ -type f -name '*.cpp' -print0 -o -name '*.h' -print0 |
+          find ./src ./include ./test ./example -type f -name '*.cpp' -print0 -o -name '*.h' -print0 |
             xargs -0 clang-tidy -p build/compile_commands.json --config-file=.clang-tidy --warnings-as-errors='*'
 
   format:
