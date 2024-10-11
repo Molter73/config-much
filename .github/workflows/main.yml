@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
@@ -40,11 +44,6 @@ jobs:
 
       - name: Lint
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bear
-
-          bear -- make -C memory-management/
-
           find ./ -type f -name '*.cpp' -print0 -o -name '*.h' -print0 |
             xargs -0 clang-tidy -p build/compile_commands.json --config-file=.clang-tidy --warnings-as-errors='*'
 
