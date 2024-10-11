@@ -20,7 +20,7 @@ private:
                       const google::protobuf::FieldDescriptor* field);
     static void parse_array(google::protobuf::Message* msg, const std::string& prefix,
                             const google::protobuf::FieldDescriptor* field);
-    //
+
     // Transformation methods for Environment Variables
     static std::string cook_env_var(const std::string& prefix, const std::string& suffix);
     static std::string camel_to_snake_case(const std::string& s);
