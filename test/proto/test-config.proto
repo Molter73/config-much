@@ -5,6 +5,11 @@ message SubField {
     bool enabled = 1;
 }
 
+enum EnumField {
+    TYPE1 = 0;
+    TYPE2 = 1;
+}
+
 message Config {
     bool enabled = 1;
     int32 field_i32 = 2;
@@ -16,4 +21,6 @@ message Config {
     string field_string = 8;
     SubField field_message = 9;
     repeated uint64 field_repeated = 10;
+    EnumField field_enum = 11;
+    repeated EnumField field_repeated_enum = 12;
 }

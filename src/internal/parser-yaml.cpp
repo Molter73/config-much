@@ -29,6 +29,20 @@ void parse_array_inner(google::protobuf::Message* msg, const YAML::Node& node,
         f.Add(n.as<T>());
     }
 }
+
+void parse_array_enum(google::protobuf::Message* msg, const YAML::Node& node,
+                      const google::protobuf::FieldDescriptor* field) {
+    using namespace google::protobuf;
+
+    auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int32>(msg, field);
+    f.Clear();
+
+    const EnumDescriptor* desc = field->enum_type();
+    for (const auto& n : node) {
+        const auto name = n.as<std::string_view>();
+        f.Add(desc->FindValueByName(name)->number());
+    }
+}
 }; // namespace
 
 void ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node,
@@ -102,9 +116,13 @@ void ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node,
     case FieldDescriptor::TYPE_BYTES:
         std::cerr << "Unsupported type BYTES" << std::endl;
         break;
-    case FieldDescriptor::TYPE_ENUM:
-        std::cerr << "Unsupported type ENUM" << std::endl;
-        break;
+    case FieldDescriptor::TYPE_ENUM: {
+        const auto name = node[field->name()].as<std::string_view>();
+
+        const EnumDescriptor* descriptor = field->enum_type();
+        const EnumValueDescriptor* value = descriptor->FindValueByName(name);
+        msg->GetReflection()->SetEnumValue(msg, field, value->number());
+    } break;
 
     case FieldDescriptor::TYPE_MESSAGE:
     case FieldDescriptor::TYPE_GROUP:
@@ -141,7 +159,7 @@ void ParserYaml::parse_array(google::protobuf::Message* msg, const YAML::Node& n
         parse_array_inner<bool>(msg, node, field);
         break;
     case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-        std::cerr << "Unsupport repeated type ENUM" << std::endl;
+        parse_array_enum(msg, node, field);
         break;
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
         parse_array_inner<std::string>(msg, node, field);

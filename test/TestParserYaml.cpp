@@ -29,6 +29,9 @@ TEST(TestParserYaml, Parsing) {
     all_fields.mutable_field_repeated()->Add(1);
     all_fields.mutable_field_repeated()->Add(2);
     all_fields.mutable_field_repeated()->Add(3);
+    all_fields.set_field_enum(test_config::EnumField::TYPE2);
+    all_fields.mutable_field_repeated_enum()->Add(0);
+    all_fields.mutable_field_repeated_enum()->Add(1);
 
     std::vector<test_case> tests = {
         {R"()", {}},
@@ -47,6 +50,10 @@ TEST(TestParserYaml, Parsing) {
                 - 1
                 - 2
                 - 3
+            field_enum: TYPE2
+            field_repeated_enum:
+                - TYPE1
+                - TYPE2
         )",
          all_fields},
     };
@@ -72,6 +79,9 @@ TEST(TestParserYaml, OverwrittingFields) {
         field_u32: 4321
         field_repeated:
             - 15
+        field_enum: TYPE1
+        field_repeated_enum:
+            - TYPE1
     )";
 
     test_config::Config expected;
@@ -79,6 +89,8 @@ TEST(TestParserYaml, OverwrittingFields) {
     expected.set_field_i32(-1234);
     expected.set_field_u32(4321);
     expected.mutable_field_repeated()->Add(15);
+    expected.set_field_enum(test_config::EnumField::TYPE1);
+    expected.mutable_field_repeated_enum()->Add(0);
     ParserYaml::parse(&cfg, YAML::Load(input));
 
     bool equals = MessageDifferencer::Equals(cfg, expected);
@@ -94,6 +106,10 @@ TEST(TestParserYaml, OverwrittingFields) {
             - 1
             - 2
             - 3
+        field_enum: TYPE2
+        field_repeated_enum:
+            - TYPE2
+            - TYPE2
     )";
 
     expected.set_enabled(true);
@@ -102,6 +118,10 @@ TEST(TestParserYaml, OverwrittingFields) {
     expected.mutable_field_repeated()->Add(1);
     expected.mutable_field_repeated()->Add(2);
     expected.mutable_field_repeated()->Add(3);
+    expected.set_field_enum(test_config::EnumField::TYPE2);
+    expected.mutable_field_repeated_enum()->Clear();
+    expected.mutable_field_repeated_enum()->Add(1);
+    expected.mutable_field_repeated_enum()->Add(1);
 
     ParserYaml::parse(&cfg, YAML::Load(input));
 
