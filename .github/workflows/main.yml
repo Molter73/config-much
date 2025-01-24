@@ -12,6 +12,8 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
+    container:
+      image: fedora:41
     name: Build and test
     strategy:
       fail-fast: false
@@ -24,6 +26,20 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
     steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            git \
+            vcpkg \
+            cmake \
+            make \
+            g++ \
+            libasan \
+            libubsan \
+            zip
+
+          git clone https://github.com/microsoft/vcpkg "${VCPKG_ROOT}"
+
       - uses: actions/checkout@v4
 
       - name: Export GitHub Actions cache environment variables

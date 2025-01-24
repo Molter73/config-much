@@ -15,7 +15,8 @@
       "cacheVariables": {
         "BUILD_TESTS": "ON",
         "BUILD_EXAMPLE": "ON",
-        "USE_ASAN": "ON"
+        "USE_ASAN": "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ]
