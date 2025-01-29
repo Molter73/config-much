@@ -80,9 +80,10 @@ void ParserEnv::parse(google::protobuf::Message* msg, const std::string& prefix,
     case FieldDescriptor::TYPE_BYTES:
         std::cerr << "Unsupported type BYTES" << std::endl;
         break;
-    case FieldDescriptor::TYPE_ENUM:
-        std::cerr << "Unsupported type ENUM" << std::endl;
-        break;
+    case FieldDescriptor::TYPE_ENUM: {
+        const EnumValueDescriptor* v = field->enum_type()->FindValueByName(value);
+        msg->GetReflection()->SetEnum(msg, field, v);
+    } break;
 
     case FieldDescriptor::TYPE_MESSAGE:
     case FieldDescriptor::TYPE_GROUP:
@@ -111,6 +112,7 @@ void parse_array_inner(google::protobuf::MutableRepeatedFieldRef<T> field, const
 
 void ParserEnv::parse_array(google::protobuf::Message* msg, const std::string& prefix,
                             const google::protobuf::FieldDescriptor* field) {
+    using namespace google::protobuf;
     switch (field->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_INT32: {
         auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int32_t>(msg, field);
@@ -145,9 +147,13 @@ void ParserEnv::parse_array(google::protobuf::Message* msg, const std::string& p
             return parsed;
         });
     } break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-        std::cerr << "Unsupported repeated type ENUM" << std::endl;
-        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
+        auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int32>(msg, field);
+        parse_array_inner<int32>(f, prefix, [&](const char* s) {
+            const google::protobuf::EnumValueDescriptor* v = field->enum_type()->FindValueByName(s);
+            return v->number();
+        });
+    } break;
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
         auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<std::string>(msg, field);
         parse_array_inner<std::string>(f, prefix, [](const char* s) { return s; });
