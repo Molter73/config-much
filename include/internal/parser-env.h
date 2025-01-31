@@ -9,7 +9,7 @@ class ParserEnv : public ParserInterface {
 public:
     ParserEnv(const std::string& prefix) : prefix_(to_upper(prefix)) {}
 
-    void parse(google::protobuf::Message* msg) override;
+    ParserResult parse(google::protobuf::Message* msg) override;
 
 private:
     FRIEND_TEST(ParserEnvTests, CamelToSnakeCase);

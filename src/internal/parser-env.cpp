@@ -4,7 +4,7 @@
 #include <google/protobuf/descriptor.h>
 
 namespace config_much::internal {
-void ParserEnv::parse(google::protobuf::Message* msg) {
+ParserResult ParserEnv::parse(google::protobuf::Message* msg) {
     using namespace google::protobuf;
 
     const Descriptor* descriptor = msg->GetDescriptor();
@@ -12,6 +12,8 @@ void ParserEnv::parse(google::protobuf::Message* msg) {
         const FieldDescriptor* field = descriptor->field(i);
         parse(msg, prefix_, field);
     }
+
+    return {};
 }
 
 void ParserEnv::parse(google::protobuf::Message* msg, const std::string& prefix,

@@ -4,6 +4,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <exception>
 #include <filesystem>
 
 namespace config_much::internal {
@@ -11,14 +12,26 @@ class ParserYaml : public ParserInterface {
 public:
     ParserYaml(std::filesystem::path file) : file_(std::move(file)) {}
 
-    void parse(google::protobuf::Message* msg) override;
-    static void parse(google::protobuf::Message* msg, const YAML::Node& node);
+    ParserResult parse(google::protobuf::Message* msg) override;
+    ParserResult parse(google::protobuf::Message* msg, const YAML::Node& node);
 
 private:
-    static void parse(google::protobuf::Message* msg, const YAML::Node& node,
-                      const google::protobuf::FieldDescriptor* field);
-    static void parse_array(google::protobuf::Message* msg, const YAML::Node& node,
-                            const google::protobuf::FieldDescriptor* field);
+    ParserResult parse(google::protobuf::Message* msg, const YAML::Node& node,
+                       const google::protobuf::FieldDescriptor* field);
+    ParserResult parse_array(google::protobuf::Message* msg, const YAML::Node& node,
+                             const google::protobuf::FieldDescriptor* field);
+    template <typename T>
+    ParserResult parse_array_inner(google::protobuf::Message* msg, const YAML::Node& node,
+                                   const google::protobuf::FieldDescriptor* field);
+    ParserResult parse_array_enum(google::protobuf::Message* msg, const YAML::Node& node,
+                                  const google::protobuf::FieldDescriptor* field);
+
+    ParserError wrap_error(const std::exception& e);
+
+    template <typename T> std::variant<T, ParserError> try_convert(const YAML::Node& node);
+    template <typename T> bool is_error(const std::variant<T, ParserError>& res) {
+        return std::holds_alternative<ParserError>(res);
+    }
 
     std::filesystem::path file_;
 };

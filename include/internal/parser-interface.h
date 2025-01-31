@@ -1,8 +1,11 @@
 #pragma once
 
+#include "parser-error.h"
+
 #include <google/protobuf/message.h>
 
 namespace config_much {
+
 class ParserInterface {
 public:
     virtual ~ParserInterface()                         = default;
@@ -12,6 +15,6 @@ public:
     ParserInterface& operator=(ParserInterface&&)      = default;
     ParserInterface()                                  = default;
 
-    virtual void parse(google::protobuf::Message* msg) = 0;
+    virtual ParserResult parse(google::protobuf::Message* msg) = 0;
 };
 } // namespace config_much

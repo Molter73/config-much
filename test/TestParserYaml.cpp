@@ -60,7 +60,8 @@ TEST(TestParserYaml, Parsing) {
 
     for (const auto& [input, expected] : tests) {
         test_config::Config parsed;
-        ParserYaml::parse(&parsed, YAML::Load(input));
+        ParserYaml parser("/test.yml");
+        parser.parse(&parsed, YAML::Load(input));
 
         bool equals = MessageDifferencer::Equals(parsed, expected);
 
@@ -91,7 +92,8 @@ TEST(TestParserYaml, OverwrittingFields) {
     expected.mutable_field_repeated()->Add(15);
     expected.set_field_enum(test_config::EnumField::TYPE1);
     expected.mutable_field_repeated_enum()->Add(0);
-    ParserYaml::parse(&cfg, YAML::Load(input));
+    ParserYaml parser("/test.yml");
+    parser.parse(&cfg, YAML::Load(input));
 
     bool equals = MessageDifferencer::Equals(cfg, expected);
     ASSERT_TRUE(equals) << "### parsed: " << std::endl
@@ -123,12 +125,57 @@ TEST(TestParserYaml, OverwrittingFields) {
     expected.mutable_field_repeated_enum()->Add(1);
     expected.mutable_field_repeated_enum()->Add(1);
 
-    ParserYaml::parse(&cfg, YAML::Load(input));
+    parser.parse(&cfg, YAML::Load(input));
 
     equals = MessageDifferencer::Equals(cfg, expected);
     ASSERT_TRUE(equals) << "### parsed: " << std::endl
                         << cfg.DebugString() << std::endl
                         << "### expected: " << std::endl
                         << expected.DebugString();
+}
+
+TEST(TestParserYaml, ParserErrors) {
+    test_config::Config cfg;
+    ParserYaml parser("/test.yml");
+    const std::string input = R"(
+        enabled: 1
+        field_i32: wrong
+        field_u32: {}
+        field_i64: also_wrong
+        field_u64: -64
+        field_double: {}
+        field_float: {}
+        field_string: 123
+        field_message: 1.2
+        field_repeated: 1
+        field_enum: NOT_REAL
+        field_repeated_enum:
+            - NOT_REAL
+            - ALSO_INVALID
+            - TYPE2
+    )";
+
+    const ParserErrors expected = {
+        "\"/test.yml\": yaml-cpp: error at line 2, column 18: bad conversion",
+        "\"/test.yml\": yaml-cpp: error at line 3, column 20: bad conversion",
+        "\"/test.yml\": Attempting to parse non-scalar field as scalar",
+        "\"/test.yml\": yaml-cpp: error at line 5, column 20: bad conversion",
+        "\"/test.yml\": yaml-cpp: error at line 6, column 20: bad conversion",
+        "\"/test.yml\": Attempting to parse non-scalar field as scalar",
+        "\"/test.yml\": Attempting to parse non-scalar field as scalar",
+        "\"/test.yml\": Type mismatch for 'field_message' - expected Map, got Scalar",
+        "\"/test.yml\": Type mismatch for 'field_repeated' - expected Sequence, got Scalar",
+        "\"/test.yml\": Invalid enum value 'NOT_REAL' for field field_enum",
+        "\"/test.yml\": Invalid enum value 'NOT_REAL' for field field_repeated_enum",
+        "\"/test.yml\": Invalid enum value 'ALSO_INVALID' for field field_repeated_enum",
+    };
+
+    auto errors = parser.parse(&cfg, YAML::Load(input));
+    ASSERT_TRUE(errors);
+    ASSERT_EQ(errors->size(), expected.size());
+
+    for (unsigned int i = 0; i < expected.size(); i++) {
+        ASSERT_EQ(errors->at(i), expected.at(i));
+    }
 }
 } // namespace config_much::internal
