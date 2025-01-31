@@ -1,6 +1,7 @@
 #pragma once
 
 #include "internal/parser-env.h"
+#include "internal/parser-error.h"
 #include "internal/parser-interface.h"
 #include "internal/parser-yaml.h"
 
@@ -13,14 +14,27 @@ class Parser {
 public:
     Parser() = default;
 
-    void parse(google::protobuf::Message* msg) {
+    ParserResult parse(google::protobuf::Message* msg) {
+        ParserErrors errors;
+
         for (auto& parser : parsers_) {
-            parser->parse(msg);
+            auto err = parser->parse(msg);
+            if (err) {
+                errors.insert(errors.end(), err->begin(), err->end());
+            }
         }
 
         if (parser_env_) {
-            parser_env_->parse(msg);
+            auto err = parser_env_->parse(msg);
+            if (err) {
+                errors.insert(errors.end(), err->begin(), err->end());
+            }
         }
+
+        if (!errors.empty()) {
+            return errors;
+        }
+        return {};
     }
 
     Parser& add_file(const std::filesystem::path& path) {
