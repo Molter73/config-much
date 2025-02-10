@@ -15,7 +15,7 @@ public:
     Parser() = default;
 
     ParserResult parse(google::protobuf::Message* msg) {
-        ParserErrors errors;
+        std::vector<ParserError> errors;
 
         for (auto& parser : parsers_) {
             auto err = parser->parse(msg);

@@ -24,6 +24,7 @@ add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 add_library(config-much STATIC
     ${PROJECT_SOURCE_DIR}/src/internal/parser-yaml.cpp
     ${PROJECT_SOURCE_DIR}/src/internal/parser-env.cpp
+    ${PROJECT_SOURCE_DIR}/src/internal/case-convert.cpp
 )
 
 target_include_directories(config-much PUBLIC ${PROJECT_SOURCE_DIR}/include)

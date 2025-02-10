@@ -1,5 +1,6 @@
 #pragma once
 
+#include "internal/case-convert.h"
 #include "internal/parser-interface.h"
 
 #include <gtest/gtest_prod.h>
@@ -7,7 +8,7 @@
 namespace config_much::internal {
 class ParserEnv : public ParserInterface {
 public:
-    ParserEnv(const std::string& prefix) : prefix_(to_upper(prefix)) {}
+    ParserEnv(const std::string& prefix) : prefix_(case_convert::all_caps(prefix)) {}
 
     ParserResult parse(google::protobuf::Message* msg) override;
 
@@ -23,8 +24,6 @@ private:
 
     // Transformation methods for Environment Variables
     static std::string cook_env_var(const std::string& prefix, const std::string& suffix);
-    static std::string camel_to_snake_case(const std::string& s);
-    static std::string to_upper(const std::string& s);
 
     std::string prefix_;
 };

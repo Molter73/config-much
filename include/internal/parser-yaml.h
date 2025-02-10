@@ -10,10 +10,12 @@
 namespace config_much::internal {
 class ParserYaml : public ParserInterface {
 public:
-    ParserYaml(std::filesystem::path file) : file_(std::move(file)) {}
+    ParserYaml(std::filesystem::path file, bool camelcase = false) : file_(std::move(file)), camelcase_(camelcase) {}
 
     ParserResult parse(google::protobuf::Message* msg) override;
     ParserResult parse(google::protobuf::Message* msg, const YAML::Node& node);
+
+    const std::filesystem::path& get_file() { return file_; }
 
 private:
     ParserResult parse(google::protobuf::Message* msg, const YAML::Node& node,
@@ -25,6 +27,10 @@ private:
                                    const google::protobuf::FieldDescriptor* field);
     ParserResult parse_array_enum(google::protobuf::Message* msg, const YAML::Node& node,
                                   const google::protobuf::FieldDescriptor* field);
+    ParserResult parse_scalar(google::protobuf::Message* msg, const YAML::Node& node,
+                              const google::protobuf::FieldDescriptor* field, const std::string& name);
+
+    ParserResult find_unknown_fields(const google::protobuf::Message& msg, const YAML::Node& node);
 
     ParserError wrap_error(const std::exception& e);
 
@@ -34,5 +40,6 @@ private:
     }
 
     std::filesystem::path file_;
+    bool camelcase_;
 };
 } // namespace config_much::internal

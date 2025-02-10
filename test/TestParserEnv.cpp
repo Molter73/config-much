@@ -9,42 +9,6 @@
 namespace config_much::internal {
 using namespace google::protobuf::util;
 
-TEST(ParserEnvTests, CamelToSnakeCase) {
-    struct test_case {
-        std::string input;
-        std::string expected;
-    };
-
-    std::vector<test_case> tests = {
-        {"no_change", "no_change"},      {"camelCase", "camel_case"},
-        {"PascalCase", "pascal_case"},   {"SomeWeIrDcAsE", "some_we_ir_dc_as_e"},
-        {"ALLUPPER", "a_l_l_u_p_p_e_r"}, {"numbers01234", "numbers01234"},
-    };
-
-    for (const auto& test : tests) {
-        std::string processed = ParserEnv::camel_to_snake_case(test.input);
-        ASSERT_EQ(processed, test.expected);
-    }
-}
-
-TEST(ParserEnvTests, ToUpper) {
-    struct test_case {
-        std::string input;
-        std::string expected;
-    };
-
-    std::vector<test_case> tests = {
-        {"NO_CHANGE", "NO_CHANGE"},
-        {"lowercase", "LOWERCASE"},
-        {"MiXed", "MIXED"},
-    };
-
-    for (const auto& test : tests) {
-        std::string processed = ParserEnv::to_upper(test.input);
-        ASSERT_EQ(processed, test.expected);
-    }
-}
-
 TEST(ParserEnvTests, CookEnvVar) {
     struct test_case {
         std::string prefix;

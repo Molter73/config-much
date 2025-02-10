@@ -167,28 +167,6 @@ void ParserEnv::parse_array(google::protobuf::Message* msg, const std::string& p
 }
 
 std::string ParserEnv::cook_env_var(const std::string& prefix, const std::string& suffix) {
-    return prefix + '_' + to_upper(camel_to_snake_case(suffix));
-}
-
-std::string ParserEnv::camel_to_snake_case(const std::string& s) {
-    std::string out;
-    bool first = true;
-
-    for (const auto& c : s) {
-        if (!first && std::isupper(c) != 0) {
-            out += '_';
-        }
-        out += (char)std::tolower(c);
-        first = false;
-    }
-
-    return out;
-}
-
-std::string ParserEnv::to_upper(const std::string& s) {
-    std::string out;
-    out.resize(s.size());
-    std::transform(s.begin(), s.end(), out.begin(), [](unsigned char c) { return std::toupper(c); });
-    return out;
+    return prefix + '_' + case_convert::all_caps(case_convert::camel_to_snake(suffix));
 }
 } // namespace config_much::internal

@@ -1,92 +1,11 @@
 #include "internal/parser-yaml.h"
+#include "internal/case-convert.h"
 
 #include <yaml-cpp/exceptions.h>
 
 #include <exception>
 
 namespace config_much::internal {
-ParserResult ParserYaml::parse(google::protobuf::Message* msg) {
-    using namespace google::protobuf;
-
-    YAML::Node node = YAML::LoadFile(file_);
-    return parse(msg, node);
-}
-
-ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node) {
-    using namespace google::protobuf;
-
-    ParserErrors errors;
-
-    const Descriptor* descriptor = msg->GetDescriptor();
-    for (int i = 0; i < descriptor->field_count(); i++) {
-        const FieldDescriptor* field = descriptor->field(i);
-
-        auto err = parse(msg, node, field);
-        if (err) {
-            errors.insert(errors.end(), err->begin(), err->end());
-        }
-    }
-
-    if (!errors.empty()) {
-        return errors;
-    }
-    return {};
-}
-
-template <typename T>
-ParserResult ParserYaml::parse_array_inner(google::protobuf::Message* msg, const YAML::Node& node,
-                                           const google::protobuf::FieldDescriptor* field) {
-    ParserErrors errors;
-    auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<T>(msg, field);
-    f.Clear();
-    for (const auto& n : node) {
-        auto value = try_convert<T>(n);
-        if (!is_error(value)) {
-            f.Add(std::get<T>(value));
-        } else {
-            errors.emplace_back(std::get<ParserError>(value));
-        }
-    }
-
-    if (!errors.empty()) {
-        return errors;
-    }
-    return {};
-}
-
-ParserResult ParserYaml::parse_array_enum(google::protobuf::Message* msg, const YAML::Node& node,
-                                          const google::protobuf::FieldDescriptor* field) {
-    using namespace google::protobuf;
-
-    ParserErrors errors;
-    auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int32>(msg, field);
-    f.Clear();
-
-    const EnumDescriptor* desc = field->enum_type();
-    for (const auto& n : node) {
-        auto v = try_convert<std::string_view>(n);
-        if (is_error(v)) {
-            errors.emplace_back(std::get<ParserError>(v));
-            continue;
-        }
-        const auto name = std::get<std::string_view>(v);
-
-        const EnumValueDescriptor* value = desc->FindValueByName(name);
-        if (value == nullptr) {
-            ParserError err;
-            err << file_ << ": Invalid enum value '" << name << "' for field " << field->name();
-            errors.emplace_back(err);
-            continue;
-        }
-
-        f.Add(value->number());
-    }
-
-    if (!errors.empty()) {
-        return errors;
-    }
-    return {};
-}
 
 // Static helpers
 namespace {
@@ -108,34 +27,185 @@ std::string node_type_to_string(YAML::NodeType::value type) {
 }
 }; // namespace
 
+ParserResult ParserYaml::parse(google::protobuf::Message* msg) {
+    using namespace google::protobuf;
+    YAML::Node node;
+
+    try {
+        node = YAML::LoadFile(file_);
+    } catch (const YAML::BadFile& e) {
+        return {{wrap_error(e)}};
+    } catch (const YAML::ParserException& e) {
+        return {{wrap_error(e)}};
+    }
+
+    return parse(msg, node);
+}
+
+ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node) {
+    using namespace google::protobuf;
+
+    if (node.IsScalar() || node.IsNull()) {
+        return {{"Invalid configuration: root node should be a map."}};
+    }
+
+    std::vector<ParserError> errors;
+
+    const Descriptor* descriptor = msg->GetDescriptor();
+    for (int i = 0; i < descriptor->field_count(); i++) {
+        const FieldDescriptor* field = descriptor->field(i);
+
+        auto err = parse(msg, node, field);
+        if (err) {
+            errors.insert(errors.end(), err->begin(), err->end());
+        }
+    }
+
+    auto res = find_unknown_fields(*msg, node);
+    if (res) {
+        errors.insert(errors.end(), res->begin(), res->end());
+    }
+
+    if (!errors.empty()) {
+        return errors;
+    }
+    return {};
+}
+
+template <typename T>
+ParserResult ParserYaml::parse_array_inner(google::protobuf::Message* msg, const YAML::Node& node,
+                                           const google::protobuf::FieldDescriptor* field) {
+    std::vector<ParserError> errors;
+    auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<T>(msg, field);
+    f.Clear();
+    for (const auto& n : node) {
+        auto value = try_convert<T>(n);
+        if (!is_error(value)) {
+            f.Add(std::get<T>(value));
+        } else {
+            errors.emplace_back(std::move(std::get<ParserError>(value)));
+        }
+    }
+
+    if (!errors.empty()) {
+        return errors;
+    }
+    return {};
+}
+
+ParserResult ParserYaml::parse_array_enum(google::protobuf::Message* msg, const YAML::Node& node,
+                                          const google::protobuf::FieldDescriptor* field) {
+    using namespace google::protobuf;
+
+    std::vector<ParserError> errors;
+    auto f = msg->GetReflection()->GetMutableRepeatedFieldRef<int32>(msg, field);
+    f.Clear();
+
+    const EnumDescriptor* desc = field->enum_type();
+    for (const auto& n : node) {
+        auto v = try_convert<std::string_view>(n);
+        if (is_error(v)) {
+            errors.emplace_back(std::move(std::get<ParserError>(v)));
+            continue;
+        }
+        const auto name = std::get<std::string_view>(v);
+
+        const EnumValueDescriptor* value = desc->FindValueByName(name);
+        if (value == nullptr) {
+            ParserError err;
+            err << file_ << ": Invalid enum value '" << name << "' for field "
+                << (camelcase_ ? case_convert::snake_to_camel(field->name()) : field->name());
+            errors.emplace_back(std::move(err));
+            continue;
+        }
+
+        f.Add(value->number());
+    }
+
+    if (!errors.empty()) {
+        return errors;
+    }
+    return {};
+}
+
+ParserResult ParserYaml::find_unknown_fields(const google::protobuf::Message& msg, const YAML::Node& node) {
+    using namespace google::protobuf;
+
+    const auto* descriptor = msg.GetDescriptor();
+    std::vector<ParserError> errors;
+
+    for (YAML::const_iterator it = node.begin(); it != node.end(); it++) {
+        auto name = it->first.as<std::string>();
+        if (camelcase_) {
+            name = case_convert::camel_to_snake(name);
+        }
+
+        const FieldDescriptor* field = descriptor->FindFieldByName(name);
+        if (field == nullptr) {
+            ParserError err;
+            err << "Unknown field '" << name << "'";
+            errors.emplace_back(std::move(err));
+            continue;
+        }
+
+        if (it->second.IsMap()) {
+            if (field->type() != FieldDescriptor::TYPE_MESSAGE) {
+                ParserError err;
+                err << file_ << ": Invalid type '" << node_type_to_string(it->second.Type()) << "' for field "
+                    << it->first.as<std::string_view>() << ", expected '" << field->type_name() << "'";
+                errors.emplace_back(std::move(err));
+                continue;
+            }
+
+            const auto* reflection = msg.GetReflection();
+            auto res               = find_unknown_fields(reflection->GetMessage(msg, field), it->second);
+
+            if (res) {
+                errors.insert(errors.end(), res->begin(), res->end());
+            }
+        }
+    }
+
+    if (!errors.empty()) {
+        return errors;
+    }
+    return {};
+}
+
 ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node,
                                const google::protobuf::FieldDescriptor* field) {
     using namespace google::protobuf;
 
-    if (!node[field->name()]) {
+    std::unique_ptr<std::string> name_ptr = nullptr;
+    const std::string* name               = &field->name();
+    if (camelcase_) {
+        name_ptr = std::make_unique<std::string>(case_convert::snake_to_camel(*name));
+        name     = name_ptr.get();
+    }
+
+    if (!node[*name]) {
         return {};
     }
 
     if (field->label() == FieldDescriptor::LABEL_REPEATED) {
-        if (!node[field->name()].IsSequence()) {
+        if (!node[*name].IsSequence()) {
             ParserError err;
-            YAML::NodeType::value type = node[field->name()].Type();
-            err << file_ << ": Type mismatch for '" << field->name() << "' - expected Sequence, got "
+            YAML::NodeType::value type = node[*name].Type();
+            err << file_ << ": Type mismatch for '" << *name << "' - expected Sequence, got "
                 << node_type_to_string(type);
             return {{err}};
         }
-        return parse_array(msg, node[field->name()], field);
+        return parse_array(msg, node[*name], field);
     }
 
     if (field->type() == FieldDescriptor::TYPE_MESSAGE) {
-        if (!node[field->name()].IsMap()) {
+        if (!node[*name].IsMap()) {
             ParserError err;
-            YAML::NodeType::value type = node[field->name()].Type();
-            err << file_ << ": Type mismatch for '" << field->name() << "' - expected Map, got "
-                << node_type_to_string(type);
+            YAML::NodeType::value type = node[*name].Type();
+            err << file_ << ": Type mismatch for '" << *name << "' - expected Map, got " << node_type_to_string(type);
             return {{err}};
         }
-        ParserErrors errors;
+        std::vector<ParserError> errors;
         const Reflection* reflection = msg->GetReflection();
 
         Message* m = reflection->MutableMessage(msg, field);
@@ -144,7 +214,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
         for (int i = 0; i < descriptor->field_count(); i++) {
             const FieldDescriptor* f = descriptor->field(i);
 
-            auto err = parse(m, node[field->name()], f);
+            auto err = parse(m, node[*name], f);
             if (err) {
                 errors.insert(errors.end(), err->begin(), err->end());
             }
@@ -156,15 +226,22 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
         return {};
     }
 
-    if (!node[field->name()].IsScalar()) {
+    if (!node[*name].IsScalar()) {
         ParserError err;
         err << file_ << ": Attempting to parse non-scalar field as scalar";
         return {{err}};
     }
 
+    return parse_scalar(msg, node[*name], field, *name);
+}
+
+ParserResult ParserYaml::parse_scalar(google::protobuf::Message* msg, const YAML::Node& node,
+                                      const google::protobuf::FieldDescriptor* field, const std::string& name) {
+    using namespace google::protobuf;
+
     switch (field->type()) {
     case FieldDescriptor::TYPE_DOUBLE: {
-        auto value = try_convert<double>(node[field->name()]);
+        auto value = try_convert<double>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -172,7 +249,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
         msg->GetReflection()->SetDouble(msg, field, std::get<double>(value));
     } break;
     case FieldDescriptor::TYPE_FLOAT: {
-        auto value = try_convert<float>(node[field->name()]);
+        auto value = try_convert<float>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -181,7 +258,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
     } break;
     case FieldDescriptor::TYPE_SFIXED64:
     case FieldDescriptor::TYPE_INT64: {
-        auto value = try_convert<int64_t>(node[field->name()]);
+        auto value = try_convert<int64_t>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -191,7 +268,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
     case FieldDescriptor::TYPE_SINT64:
     case FieldDescriptor::TYPE_FIXED64:
     case FieldDescriptor::TYPE_UINT64: {
-        auto value = try_convert<uint64_t>(node[field->name()]);
+        auto value = try_convert<uint64_t>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -200,7 +277,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
     } break;
     case FieldDescriptor::TYPE_FIXED32:
     case FieldDescriptor::TYPE_UINT32: {
-        auto value = try_convert<uint32_t>(node[field->name()]);
+        auto value = try_convert<uint32_t>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -210,7 +287,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
     case FieldDescriptor::TYPE_SINT32:
     case FieldDescriptor::TYPE_SFIXED32:
     case FieldDescriptor::TYPE_INT32: {
-        auto value = try_convert<int32_t>(node[field->name()]);
+        auto value = try_convert<int32_t>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -218,7 +295,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
         msg->GetReflection()->SetInt32(msg, field, std::get<int32_t>(value));
     } break;
     case FieldDescriptor::TYPE_BOOL: {
-        auto value = try_convert<bool>(node[field->name()]);
+        auto value = try_convert<bool>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -227,7 +304,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
 
     } break;
     case FieldDescriptor::TYPE_STRING: {
-        auto value = try_convert<std::string>(node[field->name()]);
+        auto value = try_convert<std::string>(node);
         if (is_error(value)) {
             return {{std::get<ParserError>(value)}};
         }
@@ -236,16 +313,16 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
 
     } break;
     case FieldDescriptor::TYPE_BYTES:
-        std::cerr << "Unsupported type BYTES" << std::endl;
-        break;
+        return {{"Unsupported type BYTES"}};
     case FieldDescriptor::TYPE_ENUM: {
-        const auto name = node[field->name()].as<std::string_view>();
+        // We assume enum definitions use UPPER_CASE
+        const auto enum_name = case_convert::all_caps(node.as<std::string>());
 
         const EnumDescriptor* descriptor = field->enum_type();
-        const EnumValueDescriptor* value = descriptor->FindValueByName(name);
+        const EnumValueDescriptor* value = descriptor->FindValueByName(enum_name);
         if (value == nullptr) {
             ParserError err;
-            err << file_ << ": Invalid enum value '" << name << "' for field " << field->name();
+            err << file_ << ": Invalid enum value '" << enum_name << "' for field " << name;
             return {{err}};
         }
         msg->GetReflection()->SetEnumValue(msg, field, value->number());
@@ -288,14 +365,12 @@ ParserResult ParserYaml::parse_array(google::protobuf::Message* msg, const YAML:
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
         return parse_array_inner<std::string>(msg, node, field);
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
-        std::stringstream ss;
-        ss << "Unsupport repeated type MESSAGE";
-        return {{ss.str()}};
+        return {{"Unsupport repeated type MESSAGE"}};
     } break;
     default: {
-        std::stringstream ss;
-        ss << "Unknown type " << field->type_name();
-        return {{ss.str()}};
+        ParserError err;
+        err << "Unknown type " << field->type_name();
+        return {{err}};
     }
     }
 }
