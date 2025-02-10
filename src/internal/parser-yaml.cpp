@@ -25,6 +25,15 @@ std::string node_type_to_string(YAML::NodeType::value type) {
     }
     return ""; // Unreachable
 }
+
+std::string concat_path(const std::string& path, const std::string& name) {
+    auto out = path;
+    if (!path.empty()) {
+        out += ".";
+    }
+    out += name;
+    return out;
+}
 }; // namespace
 
 ParserResult ParserYaml::parse(google::protobuf::Message* msg) {
@@ -54,16 +63,19 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
     const Descriptor* descriptor = msg->GetDescriptor();
     for (int i = 0; i < descriptor->field_count(); i++) {
         const FieldDescriptor* field = descriptor->field(i);
+        std::string path;
 
-        auto err = parse(msg, node, field);
+        auto err = parse(msg, node, field, path);
         if (err) {
             errors.insert(errors.end(), err->begin(), err->end());
         }
     }
 
-    auto res = find_unknown_fields(*msg, node);
-    if (res) {
-        errors.insert(errors.end(), res->begin(), res->end());
+    if (validation_mode_ != PERMISSIVE) {
+        auto res = find_unknown_fields(*msg, node);
+        if (res) {
+            errors.insert(errors.end(), res->begin(), res->end());
+        }
     }
 
     if (!errors.empty()) {
@@ -173,7 +185,7 @@ ParserResult ParserYaml::find_unknown_fields(const google::protobuf::Message& ms
 }
 
 ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node& node,
-                               const google::protobuf::FieldDescriptor* field) {
+                               const google::protobuf::FieldDescriptor* field, const std::string& path) {
     using namespace google::protobuf;
 
     std::unique_ptr<std::string> name_ptr = nullptr;
@@ -184,6 +196,11 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
     }
 
     if (!node[*name]) {
+        if (validation_mode_ == STRICT) {
+            ParserError err;
+            err << "Missing field '" << concat_path(path, *name) << "'";
+            return {{err}};
+        }
         return {};
     }
 
@@ -214,7 +231,7 @@ ParserResult ParserYaml::parse(google::protobuf::Message* msg, const YAML::Node&
         for (int i = 0; i < descriptor->field_count(); i++) {
             const FieldDescriptor* f = descriptor->field(i);
 
-            auto err = parse(m, node[*name], f);
+            auto err = parse(m, node[*name], f, concat_path(path, *name));
             if (err) {
                 errors.insert(errors.end(), err->begin(), err->end());
             }

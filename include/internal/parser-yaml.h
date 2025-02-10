@@ -10,7 +10,14 @@
 namespace config_much::internal {
 class ParserYaml : public ParserInterface {
 public:
-    ParserYaml(std::filesystem::path file, bool camelcase = false) : file_(std::move(file)), camelcase_(camelcase) {}
+    enum ValidationMode : uint8_t {
+        STRICT = 0,          ///< Fail on unknown or missing fields
+        PERMISSIVE,          ///< No failures for missing or unknown fields
+        UNKNOWN_FIELDS_ONLY, ///< Fail on unknown fields, but allow missing fields
+    };
+
+    ParserYaml(std::filesystem::path file, bool camelcase = false, ParserYaml::ValidationMode v = PERMISSIVE)
+        : file_(std::move(file)), camelcase_(camelcase), validation_mode_(v) {}
 
     ParserResult parse(google::protobuf::Message* msg) override;
     ParserResult parse(google::protobuf::Message* msg, const YAML::Node& node);
@@ -19,7 +26,7 @@ public:
 
 private:
     ParserResult parse(google::protobuf::Message* msg, const YAML::Node& node,
-                       const google::protobuf::FieldDescriptor* field);
+                       const google::protobuf::FieldDescriptor* field, const std::string& path);
     ParserResult parse_array(google::protobuf::Message* msg, const YAML::Node& node,
                              const google::protobuf::FieldDescriptor* field);
     template <typename T>
@@ -41,5 +48,6 @@ private:
 
     std::filesystem::path file_;
     bool camelcase_;
+    ValidationMode validation_mode_;
 };
 } // namespace config_much::internal

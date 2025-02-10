@@ -1,3 +1,4 @@
+#include "internal/parser-error.h"
 #include "internal/parser-yaml.h"
 
 #include "proto/test-config.pb.h"
@@ -9,6 +10,12 @@
 
 namespace config_much::internal {
 using namespace google::protobuf::util;
+
+constexpr std::array ValidationModeStr{
+    "STRICT",
+    "PERMISSIVE",
+    "UNKNOWN_FIELDS_ONLY",
+};
 
 TEST(TestParserYaml, Parsing) {
     struct test_case {
@@ -190,9 +197,6 @@ TEST(TestParserYaml, ParserErrors) {
         "\"/test.yml\": Invalid enum value 'NOT_REAL' for field field_enum",
         "\"/test.yml\": Invalid enum value 'NOT_REAL' for field field_repeated_enum",
         "\"/test.yml\": Invalid enum value 'ALSO_INVALID' for field field_repeated_enum",
-        "\"/test.yml\": Invalid type 'Map' for field field_u32, expected 'uint32'",
-        "\"/test.yml\": Invalid type 'Map' for field field_double, expected 'double'",
-        "\"/test.yml\": Invalid type 'Map' for field field_float, expected 'float'",
     };
 
     auto errors = parser.parse(&cfg, YAML::Load(input));
@@ -201,6 +205,108 @@ TEST(TestParserYaml, ParserErrors) {
 
     for (unsigned int i = 0; i < expected.size(); i++) {
         ASSERT_EQ(errors->at(i), expected.at(i));
+    }
+}
+
+TEST(TestParserYaml, ValidationMode) {
+    test_config::Config cfg;
+    struct test_case {
+        ParserYaml::ValidationMode mode;
+        std::string input;
+        ParserResult result;
+    };
+    std::vector<test_case> tests = {
+        {ParserYaml::STRICT,
+         R"(
+            asdf: asdf
+            field_message: {}
+        )",
+         {{
+             "Missing field 'enabled'",
+             "Missing field 'field_i32'",
+             "Missing field 'field_u32'",
+             "Missing field 'field_i64'",
+             "Missing field 'field_u64'",
+             "Missing field 'field_double'",
+             "Missing field 'field_float'",
+             "Missing field 'field_string'",
+             "Missing field 'field_message.enabled'",
+             "Missing field 'field_repeated'",
+             "Missing field 'field_enum'",
+             "Missing field 'field_repeated_enum'",
+             "Unknown field 'asdf'",
+         }}},
+        {
+            ParserYaml::STRICT,
+            R"(
+            enabled: true
+            field_i32: -32
+            field_u32: 32
+            field_i64: -64
+            field_u64: 64
+            field_double: 3.14
+            field_float: 0.12345
+            field_string: Yes, this is some random string for testing
+            field_message:
+                enabled: true
+            field_repeated:
+                - 1
+                - 2
+                - 3
+            field_enum: TYPE2
+            field_repeated_enum:
+                - TYPE1
+                - TYPE2
+            asdf: asdf
+            )",
+            {{
+                "Unknown field 'asdf'",
+            }},
+        },
+        {
+            ParserYaml::STRICT,
+            R"(
+            enabled: true
+            field_i32: -32
+            field_u32: 32
+            field_i64: -64
+            field_u64: 64
+            field_double: 3.14
+            field_float: 0.12345
+            field_string: Yes, this is some random string for testing
+            field_message:
+                enabled: true
+            field_repeated:
+                - 1
+                - 2
+                - 3
+            field_enum: TYPE2
+            field_repeated_enum:
+                - TYPE1
+                - TYPE2
+            )",
+            {},
+        },
+        {
+            ParserYaml::PERMISSIVE,
+            R"(asdf: asdf)",
+            {},
+        },
+        {
+            ParserYaml::UNKNOWN_FIELDS_ONLY,
+            R"(
+            asdf: asdf
+            field_message: {}
+        )",
+            {{"Unknown field 'asdf'"}},
+        },
+    };
+
+    for (auto& [mode, input, expected] : tests) {
+        test_config::Config cfg;
+        ParserYaml parser("/test.yml", false, mode);
+        auto res = parser.parse(&cfg, YAML::Load(input));
+        EXPECT_EQ(res, expected) << "Mode: " << ValidationModeStr.at(mode);
     }
 }
 } // namespace config_much::internal
